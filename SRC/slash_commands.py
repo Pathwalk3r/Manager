@@ -533,6 +533,7 @@ class VCSlashCommands(commands.Cog):
 
                 # Fetch single member if single-user mode, otherwise use cached get_member()
                 if user:
+                    verified_only = False
                     try:
                         target_member = await guild.fetch_member(member.id)
                     except discord.NotFound:
@@ -820,9 +821,12 @@ class VCSlashCommands(commands.Cog):
                 )
 
                 await view.wait()
+                if not getattr(view, "confirmed", False):
+                    await interaction.followup.send("Raid start cancelled.", ephemeral=True)
+                    return
 
                 if not view.channels:
-                    interaction.followup.send("Didn't select channels to pull people from")
+                    await interaction.followup.send("Didn't select channels to pull people from")
                     return
                 for m in view.lead_members:
                     await m.add_roles(interaction.guild.get_role(rcfg["Raid roles"]["Lead Role"]))
@@ -883,6 +887,7 @@ class VCSlashCommands(commands.Cog):
     @app_commands.default_permissions(manage_guild=True)
     async def raid_stop(self, interaction: discord.Interaction,channel: discord.VoiceChannel=None):
         guild=interaction.guild
+        source_channel = interaction.channel
         guild_id = str(interaction.guild.id)
         rcfg = {"Raid Channel": load_guild_config(guild_id, interaction.guild.name)["Raid Channel"],"Raid roles": load_guild_config(guild_id, interaction.guild.name)["Raid roles"]}
         crcfg= await self.load_raid(guild_id)
@@ -904,14 +909,17 @@ class VCSlashCommands(commands.Cog):
                 failed_count = 0
 
                 if channel is None:
-                    channel=crcfg["channels"][0]
-                    c= guild.get_channel(rcfg["Raid Channel"])
-                    for m in c.members:
-                        membersToMove.append(m)
+                    channel = guild.get_channel(crcfg["channels"][0])
+                else:
+                    target_channel = channel
 
+                membersToMove = []
+                for m in source_channel.members:
+                    membersToMove.append(m)
+                
                 for member in membersToMove:
                     try:
-                        await member.move_to(guild.get_channel(channel))
+                        await member.move_to(target_channel)
                         moved_count += 1
                     except discord.Forbidden:
                         failed_count += 1

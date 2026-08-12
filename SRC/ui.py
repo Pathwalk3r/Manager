@@ -733,6 +733,7 @@ class SetupRaidView(discord.ui.View):
 class RaidStartView(discord.ui.View):
     def __init__(self, invoker, guild):
         super().__init__(timeout=300)
+        self.confirmed = False
         self.invoker = invoker
         self.guild = guild
         self.channels= []
@@ -800,7 +801,7 @@ class RaidStartView(discord.ui.View):
                 "❌ Please select at least a channel and raid lead(s).",
                 ephemeral=True
             )
-
+        self.confirmed = True
         self.stop()
         await interaction.response.send_message(
             f"✅ Raid configuration complete!\n"
@@ -813,6 +814,7 @@ class RaidStartView(discord.ui.View):
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction, button):
+        self.confirmed = False
         self.clear_items()
         self.stop()
         await interaction.response.send_message(
